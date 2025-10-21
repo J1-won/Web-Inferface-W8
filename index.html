@@ -190,7 +190,44 @@
     © 2025 야옹게임천국 · 최적 해상도 16:9 · 사운드 On 권장
   </footer>
 
+  <!-- 배경 음악 -->
+  <audio id="bgMusic" loop autoplay muted>
+    <source src="game_heaven.mp3" type="audio/mpeg">
+  </audio>
+
   <script>
+    // 배경 음악 자동 재생 (최대한 자동화)
+    const bgMusic = document.getElementById('bgMusic');
+    
+    // 즉시 음악 재생 시도 (muted 상태로 시작)
+    bgMusic.volume = 0.5;
+    
+    // 페이지 로드 즉시 재생 시도
+    document.addEventListener('DOMContentLoaded', () => {
+      bgMusic.play().catch(() => {
+        console.log('자동 재생 차단됨 - 사용자 상호작용 대기');
+      });
+    });
+    
+    // 사용자 상호작용 시 음소거 해제
+    function enableSound() {
+      bgMusic.muted = false;
+      bgMusic.play().catch(() => {});
+    }
+    
+    // 다양한 상호작용 감지
+    document.addEventListener('click', enableSound, { once: true });
+    document.addEventListener('keydown', enableSound, { once: true });
+    document.addEventListener('touchstart', enableSound, { once: true });
+    document.addEventListener('mousemove', enableSound, { once: true });
+    
+    // 페이지 포커스 시에도 재생 시도
+    window.addEventListener('focus', () => {
+      if (bgMusic.paused) {
+        bgMusic.play().catch(() => {});
+      }
+    });
+
     // 카드 호버 시 mp4 자동 재생 (정책상 muted/playsinline 필요)
     const cards = document.querySelectorAll('.card');
 
