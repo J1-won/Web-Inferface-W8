@@ -54,14 +54,36 @@
       font-family:'DosSammul',monospace;font-size:0.65rem;color:#222;image-rendering:pixelated;
     }
 
-    #camBox{display:none;
-      position:fixed;top:50px;left:300px;z-index:901;
-      width:220px;padding:8px;background:rgba(255,255,255,.88);
-      border:3px solid #333;box-shadow:4px 4px 0 #666;
-      font-family:'DosSammul',monospace;font-size:12px;image-rendering:pixelated;
-    }
-    #camBox canvas{display:none;width:200px;height:150px;margin:0 auto;}
-    #camBox .cap{margin-top:6px;text-align:center;}
+    #camBox {
+    display: none; 
+    position: fixed; 
+    top: 50px; 
+    left: 280px; 
+    z-index: 901;
+    width: 220px; 
+    padding: 8px; 
+    background: #ffffff;
+    border: 3px solid #333; 
+    box-shadow: 4px 4px 0 #666;
+    font-family: 'DosSammul', monospace; 
+    image-rendering: pixelated;
+  }
+
+
+  #camBox canvas {
+    display: block; 
+    width: 200px; 
+    height: 150px; 
+    margin: 0 auto;
+    background: #000; /* 카메라 로딩 전 검은 배경 */
+  }
+
+  #camBox .cap {
+    margin-top: 6px; 
+    text-align: center; 
+    font-size: 14px; 
+    color: #333;
+  }
 
     #bathTimer{
       position:fixed;top:40px;right:40px;z-index:802;
@@ -216,26 +238,29 @@
        시작 플로우
     ========================= */
     function startBathFlow(){
-      document.getElementById("overlay").style.display="none";
-      document.getElementById("rulePopup").style.display="none";
+    document.getElementById("overlay").style.display="none";
+    document.getElementById("rulePopup").style.display="none";
 
-      const title=document.getElementById("title");
-      if(title){ title.style.fontSize="2rem"; title.style.transform="translateY(-50px)"; }
-      const subtitle=document.querySelector("h3");
-      if(subtitle) subtitle.style.display="none";
+    const title=document.getElementById("title");
+    if(title){ title.style.fontSize="2rem"; title.style.transform="translateY(-50px)"; }
+    const subtitle=document.querySelector("h3");
+    if(subtitle) subtitle.style.display="none";
 
-      const startCat=document.getElementById("startCat");
-      if(startCat) startCat.style.display="none";
+    const startCat=document.getElementById("startCat");
+    if(startCat) startCat.style.display="none";
 
-      buildStage();
+    buildStage(); // 스테이지 생성 (여기서 ensureCamBoxBesidePanel 호출됨)
+    resetCaptureState();
+    
+    // 캠박스 표시 후 캡처 시작
+    const cb = document.getElementById('camBox');
+    if(cb) cb.style.display = "block"; 
+    
+    setupMotionCapture(); 
 
-      resetCaptureState();
-
-      setupMotionCapture();
-
-      ensureTimer();
-      startBathTimer(60);
-    }
+    ensureTimer();
+    startBathTimer(60);
+  }
 
     function ensureTimer(){
       if (!bathTimerEl){
@@ -658,18 +683,31 @@
     }
 
     function ensureCamBoxBesidePanel(){
-      if (document.getElementById('camBox')) return;
-      camBox=document.createElement('div'); camBox.id='camBox';
-      const wrap=document.createElement('div'); wrap.style.position='relative';
-      camPrev=document.createElement('video');
-      Object.assign(camPrev,{autoplay:true, playsInline:true, muted:true});
-      Object.assign(camPrev.style,{width:'0px',height:'0px',display:'none'}); // 숨김
-      camViz=document.createElement('canvas'); camViz.width=200; camViz.height=150;
-      vizCtx=camViz.getContext('2d',{willReadFrequently:true});
-      const cap=document.createElement('div'); cap.className='cap'; cap.textContent='hand energy';
-      camBox.appendChild(camViz); camBox.appendChild(cap);
-      document.body.appendChild(camBox);
+    let cb = document.getElementById('camBox');
+    if (!cb) {
+      cb = document.createElement('div');
+      cb.id = 'camBox';
+      document.body.appendChild(cb);
     }
+    cb.innerHTML = ""; // 초기화
+    
+    camPrev = document.createElement('video');
+    Object.assign(camPrev, { autoplay: true, playsInline: true, muted: true });
+    camPrev.style.display = 'none'; // 비디오 원본은 숨김
+    
+    camViz = document.createElement('canvas');
+    camViz.width = 200; 
+    camViz.height = 150;
+    vizCtx = camViz.getContext('2d', { willReadFrequently: true });
+    
+    const cap = document.createElement('div');
+    cap.className = 'cap';
+    cap.textContent = 'HAND TRACKING';
+    
+    cb.appendChild(camPrev);
+    cb.appendChild(camViz);
+    cb.appendChild(cap);
+  }
 
     function loadScript(src){
       return new Promise((res,rej)=>{
@@ -705,51 +743,63 @@
       }
     }
 
-    function onHandsResults(results){
-      vizCtx.clearRect(0,0,camViz.width,camViz.height);
+    function onHandsResults(results) {
 
-      let energyOut = 0;
-      const now = performance.now();
+  vizCtx.fillStyle = "white";
+  vizCtx.fillRect(0, 0, camViz.width, camViz.height);
 
-      if(results.multiHandLandmarks && results.multiHandLandmarks.length>0){
-        const lm = results.multiHandLandmarks[0];
+  let energyOut = 0;
+  const now = performance.now();
 
-        const palms=[0,5,9,13,17];
-        let cx=0, cy=0; palms.forEach(i=>{ cx+=lm[i].x; cy+=lm[i].y; });
-        cx/=palms.length; cy/=palms.length;
+  if(results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+    const lm = results.multiHandLandmarks[0];
 
-        const px = (1-cx)*camViz.width;
-        const py = cy*camViz.height;
+    const palms = [0, 5, 9, 13, 17];
+    let cx = 0, cy = 0; 
+    palms.forEach(i => { cx += lm[i].x; cy += lm[i].y; });
+    cx /= palms.length; cy /= palms.length;
 
-        for(let i=0;i<lm.length;i++){
-          const x=(1-lm[i].x)*camViz.width, y=lm[i].y*camViz.height;
-          vizCtx.beginPath(); vizCtx.arc(x,y,2.5,0,Math.PI*2);
-          vizCtx.fillStyle='#00e0a8'; vizCtx.fill();
-        }
 
-        vizCtx.beginPath(); vizCtx.arc(px,py,12,0,Math.PI*2);
-        vizCtx.fillStyle='rgba(127,209,255,0.6)'; vizCtx.fill();
-        vizCtx.strokeStyle='#003'; vizCtx.lineWidth=2; vizCtx.stroke();
+    const px = (1 - cx) * camViz.width;
+    const py = cy * camViz.height;
 
-        if(lastPalmX!=null && lastT!=null){
-          const dt = Math.max(16, now - lastT);
-          const vx = Math.abs(px - lastPalmX) / dt;
-          const raw = vx * 2600;
-          const riseAlpha = 0.25, decayRate = 0.86;
-          energyEMA = Math.max(raw, energyEMA*decayRate);
-          energyEMA = energyEMA*(1-riseAlpha) + raw*riseAlpha;
-          energyOut = Math.min(255, energyEMA);
-        }
-        lastPalmX = px; lastT = now;
-
-        tickWashing(energyOut);
-      } else {
-        energyEMA *= 0.4;
-        lastPalmX = null; lastT = null;
-        lastBubbleAt = performance.now();
-        setCatMood(false);
-      }
+    for(let i = 0; i < lm.length; i++) {
+      const x = (1 - lm[i].x) * camViz.width;
+      const y = lm[i].y * camViz.height;
+      vizCtx.beginPath();
+      vizCtx.arc(x, y, 2.5, 0, Math.PI * 2);
+      vizCtx.fillStyle = '#44aa88';
+      vizCtx.fill();
     }
+
+    vizCtx.beginPath();
+    vizCtx.arc(px, py, 12, 0, Math.PI * 2);
+    vizCtx.fillStyle = 'rgba(127, 209, 255, 0.5)';
+    vizCtx.fill();
+    vizCtx.strokeStyle = '#333';
+    vizCtx.lineWidth = 2;
+    vizCtx.stroke();
+
+    if(lastPalmX != null && lastT != null) {
+      const dt = Math.max(16, now - lastT);
+      const vx = Math.abs(px - lastPalmX) / dt;
+      const raw = vx * 2600;
+      const riseAlpha = 0.25, decayRate = 0.86;
+      energyEMA = Math.max(raw, energyEMA * decayRate);
+      energyEMA = energyEMA * (1 - riseAlpha) + raw * riseAlpha;
+      energyOut = Math.min(255, energyEMA);
+    }
+    lastPalmX = px; lastT = now;
+
+    tickWashing(energyOut);
+
+  } else {
+    energyEMA *= 0.4;
+    lastPalmX = null; lastT = null;
+    lastBubbleAt = performance.now();
+    setCatMood(false);
+  }
+}
 
     let motionRAF=null, videoEl=null, cvsA=null, ctxA=null, cvsB=null, ctxB=null, lastFrameIsA=true;
     async function setupMotionCaptureFallback(){
